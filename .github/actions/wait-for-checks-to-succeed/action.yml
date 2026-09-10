@@ -1,0 +1,58 @@
+name: 'Wait for Checks to Succeed'
+description: 'Wait for required checks to complete before running a workflow'
+inputs:
+  list-of-checks:
+    description: 'Which checks need to be completed before this workflow can run'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Wait for required workflows
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        SHA: ${{ github.sha }}
+        WORKFLOWS: ${{ inputs.list-of-checks }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        workflows=(
+          $(echo "$WORKFLOWS" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        )
+        timeout=$((SECONDS + 1800))
+
+        for workflow in "${workflows[@]}"; do
+          while true; do
+            result=$(
+              gh api \
+                "repos/$REPO/actions/workflows/$workflow/runs?head_sha=$SHA&event=push&per_page=10" \
+                --jq '
+                  .workflow_runs[0]
+                  | if . == null
+                    then "missing"
+                    else "\(.status):\(.conclusion // "")"
+                    end
+                '
+            )
+
+            echo "$workflow: $result"
+
+            case "$result" in
+              completed:success)
+                break
+                ;;
+              completed:*)
+                echo "::error::$workflow failed for $SHA: $result"
+                exit 1
+                ;;
+            esac
+
+            if (( SECONDS >= timeout )); then
+              echo "::error::Timed out waiting for $workflow"
+              exit 1
+            fi
+
+            sleep 15
+          done
+        done

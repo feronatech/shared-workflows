@@ -5,6 +5,8 @@ on:
       release-body:
         required: true
         type: string
+      wait-for-checks:
+        type: string
 
 concurrency:
   group: release
@@ -17,26 +19,18 @@ jobs:
       contents: write
       id-token: write
     steps:
+      - name: Wait for required checks
+        uses: ./.github/actions/wait-for-checks-to-succeed
+        if: ${{ inputs.wait-for-checks != '' }}
+        with:
+          list-of-checks: ${{ inputs.wait-for-checks }}
+
       - uses: actions/checkout@v7
 
       - name: Set up Golang
         uses: actions/setup-go@v7
         with:
           go-version-file: 'go.mod'
-
-      - name: Get version from tag
-        id: get_version
-        run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          VERSION="${TAG#v}"
-          if [[ "$VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+) ]]; then
-            VERSION="${BASH_REMATCH[1]}"
-          else
-            VERSION="${VERSION%%-*}"  # Remove everything after '-'
-            VERSION="${VERSION%%.*}"  # Remove everything after first '.'
-          fi
-          echo "Extracted version: $VERSION"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Release package
         uses: softprops/action-gh-release@v3

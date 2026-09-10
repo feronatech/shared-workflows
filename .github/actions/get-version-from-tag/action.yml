@@ -1,0 +1,23 @@
+name: 'Get Version from Tag'
+description: 'Extract the version from a git tag e.g. v0.0.0-rc1'
+outputs:
+  version:
+    description: "The extracted version"
+    value: ${{ steps.get_version.outputs.version }}
+runs:
+  using: "composite"
+  steps:
+    - name: Get version from tag
+      id: get_version
+      shell: bash
+      run: |
+        TAG="${GITHUB_REF#refs/tags/}"
+        VERSION="${TAG#v}"
+        if [[ "$VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+          VERSION="${BASH_REMATCH[1]}"
+        else
+          VERSION="${VERSION%%-*}"  # Remove everything after '-'
+          VERSION="${VERSION%%.*}"  # Remove everything after first '.'
+        fi
+        echo "Extracted version: $VERSION"
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
