@@ -2,10 +2,6 @@ name: Vulnerability Scan
 on:
   workflow_call:
 
-concurrency:
-  group: cve-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   cve:
     runs-on: ubuntu-slim

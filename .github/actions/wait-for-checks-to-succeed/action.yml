@@ -24,9 +24,11 @@ runs:
 
         for workflow in "${workflows[@]}"; do
           while true; do
+            echo "Checking status of workflow: $workflow for commit $SHA..."
+
             result=$(
               gh api \
-                "repos/$REPO/actions/workflows/$workflow/runs?head_sha=$SHA&event=push&per_page=10" \
+                "/repos/$REPO/actions/workflows/$workflow/runs?head_sha=$SHA&event=push&per_page=10" \
                 --jq '
                   .workflow_runs[0]
                   | if . == null
