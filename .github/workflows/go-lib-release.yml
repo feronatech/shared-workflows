@@ -20,7 +20,7 @@ jobs:
       id-token: write
     steps:
       - name: Wait for required checks
-        uses: ./.github/actions/wait-for-checks-to-succeed
+        uses: feronatech/shared-workflows/.github/actions/wait-for-checks-to-succeed@main
         if: ${{ inputs.wait-for-checks != '' }}
         with:
           list-of-checks: ${{ inputs.wait-for-checks }}
