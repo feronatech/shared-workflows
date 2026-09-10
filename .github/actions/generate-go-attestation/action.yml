@@ -1,0 +1,107 @@
+name: 'Generate Go Attestation'
+description: 'Creates a provenance manifest for a Golang module and generates an attestation for it'
+outputs:
+  manifest_path:
+    description: "The generated provenance manifest"
+    value: ${{ steps.generate_manifest.outputs.manifest_path }}
+  attestation_path:
+    description: "The generated attestation"
+    value: ${{ steps.generate_attestation.outputs.attestation_path }}
+runs:
+  using: "composite"
+  steps:
+    - name: Determine module information
+      id: module
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        MODULE="$(go list -m)"
+        VERSION="${GITHUB_REF_NAME}"
+        COMMIT="$(git rev-parse HEAD)"
+
+        echo "module=$MODULE" >> "$GITHUB_OUTPUT"
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
+
+    - name: Download published module
+      shell: bash
+      env:
+        MODULE: ${{ steps.module.outputs.module }}
+        VERSION: ${{ steps.module.outputs.version }}
+      run: |
+        set -euo pipefail
+
+        # A newly published version may take a short time to appear.
+        for attempt in {1..12}; do
+          if GOPROXY=https://proxy.golang.org \
+              go mod download -json "${MODULE}@${VERSION}" \
+              > module-download.json; then
+            break
+          fi
+
+          if [ "$attempt" = 12 ]; then
+            echo "Module did not become available from proxy.golang.org"
+            exit 1
+          fi
+
+          sleep 10
+        done
+
+    - name: Create provenance manifest
+      shell: bash
+      env:
+        MODULE: ${{ steps.module.outputs.module }}
+        VERSION: ${{ steps.module.outputs.version }}
+        COMMIT: ${{ steps.module.outputs.commit }}
+      run: |
+        set -euo pipefail
+
+        SUM="$(jq -r '.Sum' module-download.json)"
+        GOMOD_SUM="$(jq -r '.GoModSum' module-download.json)"
+        ORIGIN_HASH="$(jq -r '.Origin.Hash // empty' module-download.json)"
+
+        jq -n \
+          --arg schema "https://example.com/go-module-provenance/v1" \
+          --arg module "$MODULE" \
+          --arg version "$VERSION" \
+          --arg commit "$COMMIT" \
+          --arg originCommit "$ORIGIN_HASH" \
+          --arg sum "$SUM" \
+          --arg goModSum "$GOMOD_SUM" \
+          --arg repository "$GITHUB_REPOSITORY" \
+          --arg workflow "$GITHUB_WORKFLOW" \
+          --arg runId "$GITHUB_RUN_ID" \
+          '{
+            schema: $schema,
+            module: $module,
+            version: $version,
+            commit: $commit,
+            originCommit: $originCommit,
+            moduleSum: $sum,
+            goModSum: $goModSum,
+            repository: $repository,
+            workflow: $workflow,
+            workflowRunId: $runId
+          }' > module-provenance.json
+
+        jq . module-provenance.json
+
+    - name: Attest provenance manifest
+      id: attest
+      uses: actions/attest@v4
+      with:
+        subject-path: module-provenance.json
+
+    - name: Copy attestation bundle
+      shell: bash
+      env:
+        BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+      run: |
+        cp "$BUNDLE_PATH" module-provenance.json.sigstore.json
+
+    - name: Set outputs
+      shell: bash
+      run: |
+        echo "manifest_path=module-provenance.json" >> "$GITHUB_OUTPUT"
+        echo "attestation_path=module-provenance.json.sigstore.json" >> "$GITHUB_OUTPUT"

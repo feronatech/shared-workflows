@@ -14,6 +14,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      attestations: write
     steps:
       - name: Wait for required checks
         uses: feronatech/shared-workflows/.github/actions/wait-for-checks-to-succeed@main
@@ -28,9 +29,16 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Generate attestation
+        uses: feronatech/shared-workflows/.github/actions/generate-go-attestation@main
+        id: attestation
+
       - name: Release package
         uses: softprops/action-gh-release@v3
         with:
           body: ${{ inputs.release-body }}
           generate_release_notes: true
           make_latest: true
+          files: |
+            ${{ steps.attestation.outputs.manifest_path }}
+            ${{ steps.attestation.outputs.attestation_path }}
