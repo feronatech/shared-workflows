@@ -3,10 +3,10 @@ description: 'Creates a provenance manifest for a Golang module and generates an
 outputs:
   manifest_path:
     description: "The generated provenance manifest"
-    value: ${{ steps.generate_manifest.outputs.manifest_path }}
+    value: ${{ steps.set_outputs.outputs.manifest_path }}
   attestation_path:
     description: "The generated attestation"
-    value: ${{ steps.generate_attestation.outputs.attestation_path }}
+    value: ${{ steps.set_outputs.outputs.attestation_path }}
 runs:
   using: "composite"
   steps:
@@ -103,6 +103,7 @@ runs:
         cp "$BUNDLE_PATH" module-provenance.json.sigstore.json
 
     - name: Set outputs
+      id: set_outputs
       shell: bash
       run: |
         echo "manifest_path=module-provenance.json" >> "$GITHUB_OUTPUT"
