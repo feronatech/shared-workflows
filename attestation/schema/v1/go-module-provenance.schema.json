@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/feronatech/shared-workflows/blob/main/attestation/schema/v1/go-module-provenance.schema.json",
+  "title": "Go Module Release Provenance",
+  "description": "Provenance information connecting a Go module version to a Git commit and GitHub Actions workflow.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "module",
+    "version",
+    "commit",
+    "repository",
+    "workflow",
+    "workflowRun",
+    "moduleChecksum",
+    "goModChecksum"
+  ],
+  "properties": {
+    "module": {
+      "type": "string",
+      "description": "The Go module path.",
+      "pattern": "^[^\\s]+$"
+    },
+    "version": {
+      "type": "string",
+      "description": "The released Go module version.",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "commit": {
+      "type": "string",
+      "description": "The exact Git commit associated with the release tag.",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "originCommit": {
+      "type": "string",
+      "description": "The exact original Git commit taken from the module's source.",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "moduleSum": {
+      "type": "string",
+      "description": "The Go module content checksum from go mod download -json.",
+      "pattern": "^h1:[A-Za-z0-9+/]+={0,2}$"
+    },
+    "goModSum": {
+      "type": "string",
+      "description": "The go.mod checksum from go mod download -json.",
+      "pattern": "^h1:[A-Za-z0-9+/]+={0,2}$"
+    },
+    "repository": {
+      "type": "string",
+      "description": "GitHub repository in OWNER/REPOSITORY form.",
+      "pattern": "^[^/\\s]+/[^/\\s]+$"
+    },
+    "workflow": {
+      "type": "string",
+      "description": "The GitHub Actions workflow name."
+    },
+    "workflowRun": {
+      "type": "string",
+      "description": "The GitHub Actions workflow run ID.",
+      "pattern": "^[0-9]+$"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

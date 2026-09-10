@@ -62,7 +62,7 @@ runs:
         ORIGIN_HASH="$(jq -r '.Origin.Hash // empty' module-download.json)"
 
         jq -n \
-          --arg schema "https://example.com/go-module-provenance/v1" \
+          --arg schema "https://github.com/feronatech/shared-workflows/blob/main/attestation/schema/v1/go-module-provenance.schema.json" \
           --arg module "$MODULE" \
           --arg version "$VERSION" \
           --arg commit "$COMMIT" \
@@ -72,8 +72,9 @@ runs:
           --arg repository "$GITHUB_REPOSITORY" \
           --arg workflow "$GITHUB_WORKFLOW" \
           --arg runId "$GITHUB_RUN_ID" \
+          --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
           '{
-            schema: $schema,
+            "$schema": $schema,
             module: $module,
             version: $version,
             commit: $commit,
@@ -82,7 +83,8 @@ runs:
             goModSum: $goModSum,
             repository: $repository,
             workflow: $workflow,
-            workflowRunId: $runId
+            workflowRunId: $runId,
+            generatedAt: $generatedAt
           }' > module-provenance.json
 
         jq . module-provenance.json
