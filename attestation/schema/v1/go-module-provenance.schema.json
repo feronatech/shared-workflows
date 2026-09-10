@@ -9,11 +9,13 @@
     "module",
     "version",
     "commit",
+    "originCommit",
+    "moduleSum",
+    "goModSum",
     "repository",
     "workflow",
     "workflowRun",
-    "moduleChecksum",
-    "goModChecksum"
+    "generatedAt"
   ],
   "properties": {
     "module": {
