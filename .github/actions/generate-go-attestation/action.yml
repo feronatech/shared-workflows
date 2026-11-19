@@ -18,7 +18,7 @@ runs:
 
         MODULE="$(go list -m)"
         VERSION="${GITHUB_REF_NAME}"
-        COMMIT="$(git rev-parse HEAD)"
+        COMMIT="$(git rev-parse "${VERSION}^{commit}")"
 
         echo "module=$MODULE" >> "$GITHUB_OUTPUT"
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -36,7 +36,8 @@ runs:
         for attempt in {1..12}; do
           if GOPROXY=https://proxy.golang.org \
               go mod download -json "${MODULE}@${VERSION}" \
-              > module-download.json; then
+              > module-download.tmp.json; then
+            mv module-download.tmp.json module-download.json
             break
           fi
 
@@ -47,6 +48,37 @@ runs:
 
           sleep 10
         done
+
+    - name: Verify proxy matches tag
+      shell: bash
+      env:
+        COMMIT: ${{ steps.module.outputs.commit }}
+      run: |
+        set -euo pipefail
+
+        ORIGIN_HASH="$(jq -r '.Origin.Hash // empty' module-download.json)"
+
+        if [ -z "$ORIGIN_HASH" ]; then
+          echo "Proxy response has no Origin.Hash, cannot verify"
+          exit 1
+        fi
+
+        if [ "$ORIGIN_HASH" != "$COMMIT" ]; then
+          echo "Mismatch: proxy=$ORIGIN_HASH tag=$COMMIT"
+          exit 1
+        fi
+
+    - name: Locate module zip
+      id: zip
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        ZIP="$(jq -r '.Zip' module-download.json)"
+        test -f "$ZIP"
+
+        echo "path=$ZIP" >> "$GITHUB_OUTPUT"
+        echo "sha256=$(sha256sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
     - name: Create provenance manifest
       shell: bash
@@ -59,52 +91,56 @@ runs:
 
         SUM="$(jq -r '.Sum' module-download.json)"
         GOMOD_SUM="$(jq -r '.GoModSum' module-download.json)"
-        ORIGIN_HASH="$(jq -r '.Origin.Hash // empty' module-download.json)"
+        ORIGIN_HASH="$(jq -r '.Origin.Hash' module-download.json)"
 
         jq -n \
-          --arg schema "https://github.com/feronatech/shared-workflows/blob/main/attestation/schema/v1/go-module-provenance.schema.json" \
           --arg module "$MODULE" \
           --arg version "$VERSION" \
           --arg commit "$COMMIT" \
           --arg originCommit "$ORIGIN_HASH" \
           --arg sum "$SUM" \
           --arg goModSum "$GOMOD_SUM" \
-          --arg repository "$GITHUB_REPOSITORY" \
-          --arg workflow "$GITHUB_WORKFLOW" \
-          --arg runId "$GITHUB_RUN_ID" \
           --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
           '{
-            "$schema": $schema,
             module: $module,
             version: $version,
             commit: $commit,
             originCommit: $originCommit,
+            tagMatchesProxy: ($commit == $originCommit),
             moduleSum: $sum,
             goModSum: $goModSum,
-            repository: $repository,
-            workflow: $workflow,
-            workflowRunId: $runId,
             generatedAt: $generatedAt
           }' > module-provenance.json
 
         jq . module-provenance.json
 
+    - name: Validate predicate against schema
+      shell: bash
+      run: |
+        set -euo pipefail
+        pipx install check-jsonschema
+        check-jsonschema \
+          --schemafile "$GITHUB_ACTION_PATH/../attestation/schema/v2/go-module-provenance.schema.json" \
+          module-provenance.json
+
     - name: Attest provenance manifest
       id: attest
       uses: actions/attest@v4
       with:
-        subject-path: module-provenance.json
+        subject-path: ${{ steps.zip.outputs.path }}
+        predicate-type: https://raw.githubusercontent.com/feronatech/shared-workflows/main/attestation/schema/v2/go-module-provenance.schema.json
+        predicate-path: module-provenance.json
 
     - name: Copy attestation bundle
       shell: bash
       env:
         BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
       run: |
-        cp "$BUNDLE_PATH" module-provenance.json.sigstore.json
+        cp "$BUNDLE_PATH" module-provenance.sigstore.json
 
     - name: Set outputs
       id: set_outputs
       shell: bash
       run: |
         echo "manifest_path=module-provenance.json" >> "$GITHUB_OUTPUT"
-        echo "attestation_path=module-provenance.json.sigstore.json" >> "$GITHUB_OUTPUT"
+        echo "attestation_path=module-provenance.sigstore.json" >> "$GITHUB_OUTPUT"

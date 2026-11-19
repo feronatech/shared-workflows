@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/feronatech/shared-workflows/main/attestation/schema/v2/go-module-provenance.schema.json",
+  "title": "Go Module Provenance Predicate",
+  "description": "Predicate describing a Go module version fetched from the Go module proxy and verified against the Git tag it was released from. The attestation subject is the module zip.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "module",
+    "version",
+    "commit",
+    "originCommit",
+    "tagMatchesProxy",
+    "moduleSum",
+    "goModSum",
+    "generatedAt"
+  ],
+  "properties": {
+    "module": {
+      "type": "string",
+      "description": "The Go module path.",
+      "pattern": "^[^\\s]+$"
+    },
+    "version": {
+      "type": "string",
+      "description": "The released Go module version.",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "commit": {
+      "type": "string",
+      "description": "The Git commit the release tag resolves to, as seen in the CI checkout.",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "originCommit": {
+      "type": "string",
+      "description": "The Git commit reported by the Go proxy (Origin.Hash) for the downloaded module.",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "tagMatchesProxy": {
+      "type": "boolean",
+      "description": "True when commit equals originCommit. The producing action fails the job otherwise, so a signed attestation always has this set to true."
+    },
+    "moduleSum": {
+      "type": "string",
+      "description": "The Go module content checksum (Sum) from go mod download -json.",
+      "pattern": "^h1:[A-Za-z0-9+/]+={0,2}$"
+    },
+    "goModSum": {
+      "type": "string",
+      "description": "The go.mod checksum (GoModSum) from go mod download -json.",
+      "pattern": "^h1:[A-Za-z0-9+/]+={0,2}$"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when the predicate was generated."
+    }
+  }
+}

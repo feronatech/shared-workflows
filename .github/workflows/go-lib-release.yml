@@ -33,6 +33,13 @@ jobs:
         uses: feronatech/shared-workflows/.github/actions/generate-go-attestation@main
         id: attestation
 
+      - name: Generate SBOM
+        uses: feronatech/shared-workflows/.github/actions/generate-sbom@main
+        id: sbom
+        with:
+          scan-type: fs
+          file-path: .
+
       - name: Release package
         uses: softprops/action-gh-release@v3
         with:
@@ -42,3 +49,5 @@ jobs:
           files: |
             ${{ steps.attestation.outputs.manifest_path }}
             ${{ steps.attestation.outputs.attestation_path }}
+            ${{ steps.sbom.outputs.sbom_path }}
+            ${{ steps.sbom.outputs.attestation_path }}

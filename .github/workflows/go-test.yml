@@ -1,6 +1,11 @@
 name: Testing
 on:
   workflow_call:
+    inputs:
+      parameters:
+        description: "Parameters to pass to the test command"
+        type: string
+        default: ""
 
 jobs:
   test:
@@ -16,4 +21,4 @@ jobs:
           go-version-file: 'go.mod'
       
       - name: Run tests
-        run: go test -v ./...
+        run: go test -v ./... ${{ inputs.parameters }}

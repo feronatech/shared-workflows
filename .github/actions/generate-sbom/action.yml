@@ -1,0 +1,75 @@
+name: Generate SBOM
+description: 'Generates a Software Bill of Materials (SBOM) for a given file or container image and creates an attestation for it'
+inputs:
+  scan-type:
+    description: "fs (source/lockfiles) or image (container)"
+    type: string
+    default: fs
+  file-path:
+    description: "Path to the file to scan and attest"
+    type: string
+    default: "."
+  image-name:
+    description: "Name of the image to scan and attest"
+    type: string
+    default: ""
+  image-digest:
+    description: "Hash digest of the image"
+    type: string
+outputs:
+  sbom_path:
+    description: 'The generated SBOM'
+    value: ${{ steps.set_outputs.outputs.sbom_path }}
+  attestation_path:
+    description: 'The generated SBOM attestation bundle'
+    value: ${{ steps.set_outputs.outputs.attestation_path }}
+runs:
+  using: "composite"  
+  steps:
+    - uses: actions/checkout@v7
+
+    - name: Generate SBOM with Trivy
+      uses: aquasecurity/trivy-action@v0.36.0
+      with:
+        scan-type: ${{ inputs.scan-type }}
+        scan-ref: ${{ inputs.file-path != '' && inputs.file-path || inputs.image-name }}
+        format: cyclonedx
+        output: sbom.json
+
+    - name: Upload SBOM artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom
+        path: sbom.json
+
+    - name: Attest SBOM (file)
+      if: inputs.file-path != ''
+      id: attest
+      uses: actions/attest-sbom@v2
+      with:
+        subject-path: ${{ inputs.file-path }}
+        sbom-path: sbom.json
+
+    - name: Attest SBOM (image)
+      if: inputs.image-name != ''
+      uses: actions/attest-sbom@v2
+      with:
+        subject-name: ${{ inputs.image-name }}
+        subject-digest: ${{ inputs.image-digest }}
+        sbom-path: sbom.json
+        push-to-registry: true
+
+    - name: Copy attestation bundle
+      if: inputs.file-path != ''
+      shell: bash
+      env:
+        BUNDLE_PATH: ${{ steps.attest.outputs.bundle-path }}
+      run: |
+        cp "$BUNDLE_PATH" sbom.sigstore.json
+
+    - name: Set outputs
+      id: set_outputs
+      shell: bash
+      run: |
+        echo "sbom_path=sbom.json" >> "$GITHUB_OUTPUT"
+        echo "attestation_path=sbom.sigstore.json" >> "$GITHUB_OUTPUT"
