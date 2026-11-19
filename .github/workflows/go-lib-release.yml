@@ -46,6 +46,7 @@ jobs:
           body: ${{ inputs.release-body }}
           generate_release_notes: true
           make_latest: true
+          fail_on_unmatched_files: true
           files: |
             ${{ steps.attestation.outputs.manifest_path }}
             ${{ steps.attestation.outputs.attestation_path }}
