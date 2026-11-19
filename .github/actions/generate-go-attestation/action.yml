@@ -24,6 +24,8 @@ runs:
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
 
+        echo "SCHEMA_URL=https://raw.githubusercontent.com/feronatech/shared-workflows/main/attestation/schema/v2/go-module-provenance.schema.json" >> "$GITHUB_ENV"
+
     - name: Download published module
       shell: bash
       env:
@@ -119,16 +121,14 @@ runs:
       run: |
         set -euo pipefail
         pipx install check-jsonschema
-        check-jsonschema \
-          --schemafile "$GITHUB_ACTION_PATH/../attestation/schema/v2/go-module-provenance.schema.json" \
-          module-provenance.json
+        check-jsonschema --schemafile "$SCHEMA_URL" module-provenance.json
 
     - name: Attest provenance manifest
       id: attest
       uses: actions/attest@v4
       with:
         subject-path: ${{ steps.zip.outputs.path }}
-        predicate-type: https://raw.githubusercontent.com/feronatech/shared-workflows/main/attestation/schema/v2/go-module-provenance.schema.json
+        predicate-type: ${{ env.SCHEMA_URL }}
         predicate-path: module-provenance.json
 
     - name: Copy attestation bundle
