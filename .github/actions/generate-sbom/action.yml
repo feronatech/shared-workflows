@@ -45,14 +45,14 @@ runs:
     - name: Attest SBOM (file)
       if: inputs.file-path != ''
       id: attest
-      uses: actions/attest-sbom@v2
+      uses: actions/attest-sbom@v4
       with:
         subject-path: ${{ inputs.file-path }}
         sbom-path: sbom.json
 
     - name: Attest SBOM (image)
       if: inputs.image-name != ''
-      uses: actions/attest-sbom@v2
+      uses: actions/attest-sbom@v4
       with:
         subject-name: ${{ inputs.image-name }}
         subject-digest: ${{ inputs.image-digest }}

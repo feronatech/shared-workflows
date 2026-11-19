@@ -120,8 +120,8 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        pipx install check-jsonschema
-        check-jsonschema --schemafile "$SCHEMA_URL" module-provenance.json
+        curl -fsSL "$SCHEMA_URL" -o schema.json
+        go run github.com/santhosh-tekuri/jsonschema/v6/cmd/jv@v6.0.1 schema.json module-provenance.json
 
     - name: Attest provenance manifest
       id: attest
