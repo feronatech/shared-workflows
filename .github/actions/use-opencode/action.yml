@@ -1,0 +1,50 @@
+name: 'Use OpenCode Action'
+description: 'Run an OpenCode Agent to perform various tasks such as code analysis, testing, and deployment.'
+inputs:
+  model:
+    description: "The model to use. Doublecheck the correct provider is configured."
+    value: openrouter/openrouter/free
+  prompt:
+    description: "The instructions the agent will get."
+  continue:
+    description: "Whether to continue the execution if the agent fails."
+    value: false
+outputs:
+  version:
+    description: "The extracted version"
+    value: ${{ steps.get_version.outputs.version }}
+runs:
+  using: "composite"
+  steps:
+    - name: Check opencode installed
+      id: check_opencode
+      shell: bash
+      run: |
+        installed=True
+        echo "Checking if opencode is installed..."
+        if ! command -v opencode &> /dev/null; then
+          echo "opencode is not installed. will install it now."
+          installed=False
+        fi
+        echo "installed=$installed" >> $GITHUB_ENV
+
+    - name: Install opencode
+      if: steps.check_opencode.outputs.installed == 'False'
+      shell: bash
+      run: curl -fsSL https://opencode.ai/v2/install | bash
+
+    - name: Debug information
+      shell: bash
+      run: |
+        opencode --version
+        opencode auth list
+        opencode session list
+
+    - name: Run model with defined prompt
+      run: |
+        opencode run --standalone \
+          --model ${{ inputs.model }} \
+          --format json \
+          --auto \
+          ${{ inputs.continue == 'true' && '--continue' || '' }} \
+          "${{ inputs.prompt }}"
