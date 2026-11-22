@@ -3,16 +3,17 @@ description: 'Run an OpenCode Agent to perform various tasks such as code analys
 inputs:
   model:
     description: "The model to use. Doublecheck the correct provider is configured."
-    value: openrouter/openrouter/free
+    default: openrouter/openrouter/free
   prompt:
     description: "The instructions the agent will get."
+    required: true
   continue:
-    description: "Whether to continue the execution if the agent fails."
-    value: false
+    description: "Whether to continue the last agent execution."
+    default: false
 outputs:
-  version:
-    description: "The extracted version"
-    value: ${{ steps.get_version.outputs.version }}
+  result:
+    description: 'The result of the agent execution'
+    value: ${{ steps.run.outputs.result }}
 runs:
   using: "composite"
   steps:
@@ -26,7 +27,7 @@ runs:
           echo "opencode is not installed. will install it now."
           installed=False
         fi
-        echo "installed=$installed" >> $GITHUB_ENV
+        echo "installed=$installed" >> $GITHUB_OUTPUT
 
     - name: Install opencode
       if: steps.check_opencode.outputs.installed == 'False'
@@ -41,10 +42,17 @@ runs:
         opencode session list
 
     - name: Run model with defined prompt
+      shell: bash
+      env:
+        PROMPT: ${{ inputs.prompt }}
+        MODEL: ${{ inputs.model }}
       run: |
+        out="output.log"
+        > $out
         opencode run --standalone \
-          --model ${{ inputs.model }} \
+          --model $MODEL \
           --format json \
           --auto \
           ${{ inputs.continue == 'true' && '--continue' || '' }} \
-          "${{ inputs.prompt }}"
+          "$PROMPT" > $out
+        echo "result=$out" >> $GITHUB_OUTPUT
