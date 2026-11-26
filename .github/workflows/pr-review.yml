@@ -1,6 +1,9 @@
 name: Review Pull Request
 on:
   workflow_call:
+    secrets:
+      OPENROUTER_API_KEY:
+        required: true
 
 jobs:
   review:
@@ -15,13 +18,18 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Prepare OpenCode auth file
+        id: prepare_auth
+        run: |
+          echo '[{"id":"go-cve-autofix-provider","integrationID":"openrouter","label":"API key","active":true,"value":{"type":"key","key":"${{ secrets.OPENROUTER_API_KEY }}"}}]' > opencode_auth.json
+
       - name: Run review
         uses: feronatech/shared-workflows/.github/actions/use-opencode@main
         id: run
-        env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         with:
+          import_auth_file: opencode_auth.json
           prompt: "Review this pull request for bugs, security issues and missing tests. Be concise."
+  
   comment:
     needs: review
     runs-on: ubuntu-latest
