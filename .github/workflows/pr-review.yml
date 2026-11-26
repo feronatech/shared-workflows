@@ -1,0 +1,36 @@
+name: Review Pull Request
+on:
+  workflow_call:
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      result: ${{ steps.run.outputs.result }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Run review
+        uses: feronatech/shared-workflows/.github/actions/use-opencode@main
+        id: run
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        with:
+          prompt: "Review this pull request for bugs, security issues and missing tests. Be concise."
+  comment:
+    needs: review
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add comment to PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          BODY: ${{ needs.review.outputs.result }}
+        run: gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
