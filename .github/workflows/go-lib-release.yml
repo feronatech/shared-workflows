@@ -22,12 +22,7 @@ jobs:
         with:
           list-of-checks: ${{ inputs.wait-for-checks }}
 
-      - uses: actions/checkout@v7
-
-      - name: Set up Golang
-        uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
+      - uses: feronatech/shared-workflows/.github/actions/start-go-workflow@main
 
       - name: Generate attestation
         uses: feronatech/shared-workflows/.github/actions/generate-go-attestation@main

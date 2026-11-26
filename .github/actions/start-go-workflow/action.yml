@@ -1,0 +1,10 @@
+name: Start Golang Workflow
+description: 'Common start of a Golang workflow, including checkout and setup of Golang environment.'
+runs:
+  using: "composite"  
+  steps:
+    - uses: actions/checkout@v7
+    - name: Set up Golang
+      uses: actions/setup-go@v7
+      with:
+        go-version-file: 'go.mod'
