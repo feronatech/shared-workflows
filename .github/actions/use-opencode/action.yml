@@ -10,6 +10,9 @@ inputs:
   continue:
     description: "Whether to continue the last agent execution."
     default: false
+  import_auth_file:
+    description: "File to import authentication from."
+    default: ""
 outputs:
   result:
     description: 'The result of the agent execution'
@@ -33,6 +36,14 @@ runs:
       if: steps.check_opencode.outputs.installed == 'False'
       shell: bash
       run: curl -fsSL https://opencode.ai/v2/install | bash
+
+    - name: Import auth file
+      if: ${{ inputs.import_auth_file != '' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "Importing auth file from ${{ inputs.import_auth_file }}..."
+        opencode auth import "${{ inputs.import_auth_file }}"
 
     - name: Debug information
       shell: bash
