@@ -1,0 +1,8 @@
+name: Start NodeJS Workflow
+description: 'Common start of a NodeJS (pnpm) workflow, including checkout and setup of NodeJS and pnpm environment.'
+runs:
+  using: "composite"  
+  steps:
+    - uses: actions/checkout@v7
+    - name: Set up NodeJS and pnpm
+      uses: pnpm/setup@v3

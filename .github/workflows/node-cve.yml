@@ -1,0 +1,19 @@
+name: Vulnerability Scan
+on:
+  workflow_call:
+    inputs:
+      level:
+        description: "The level of vulnerabilities to check for"
+        type: string
+        default: "high"
+
+jobs:
+  cve:
+    runs-on: ubuntu-slim
+    permissions:
+      contents: read
+    steps:
+      - uses: feronatech/shared-workflows/.github/actions/start-node-workflow@main
+      
+      - name: Check CVEs
+        run: pnpm audit --audit-level ${{ inputs.level }}
